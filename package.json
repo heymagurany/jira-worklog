@@ -1,0 +1,17 @@
+{
+  "name": "time-tracker",
+  "version": "1.0.0",
+  "description": "Quarterly R&D time reporting sucks. This should help.",
+  "main": "time-tracker.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Matt Magurany <matt.magurany@inin.com>",
+  "license": "ISC",
+  "dependencies": {
+    "bluebird": "^3.4.0",
+    "lodash": "^4.13.1",
+    "moment": "^2.13.0",
+    "request-promise": "^3.0.0"
+  }
+}
