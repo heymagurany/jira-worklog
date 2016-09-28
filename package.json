@@ -1,5 +1,5 @@
 {
-  "name": "time-tracker",
+  "name": "jira2inin",
   "version": "1.0.0",
   "description": "Quarterly R&D time reporting sucks. This should help.",
   "main": "time-tracker.js",
