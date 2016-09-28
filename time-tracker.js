@@ -5,12 +5,22 @@ const request = require('request-promise');
 
 const fromTime = moment(process.argv[2]);
 const toTime = moment(process.argv[3]);
+const workingDuration = moment.duration({
+  days: process.argv[4]
+});
+
+if (process.argv.length < 5 || !fromTime.isValid() || !toTime.isValid() || isNaN(workingDuration.asDays())) {
+  console.log("usage: jira2inin <start-date> <end-date> <working-days>");
+  return;
+}
+
+const workingSeconds = workingDuration.asDays() * 28800;
 const baseUrl = 'https://inindca.atlassian.net/rest/api/2/';
 const username = 'heymagurany';
 const options = {
   auth: {
     user: username,
-    pass: ''
+    pass: 'ydYFB4Zp842yF7cJkMFgiZwRA})NVu'
   },
   json: true,
   headers: {
@@ -47,10 +57,15 @@ function getWorkLog(issues, epicMap, epicKey, whitespace) {
     return Promise.each(issues, issue => {
       epicKey = issue.fields[epicFieldName] || epicKey;
 
-      return get(`issue/${issue.key}/worklog`)
-      .then(result => aggregateWorkLogs(result.worklogs))
-      .then(timeSpent => {
-        if (epicKey) {
+      if (epicKey) {
+        var worklog = issue.fields.worklog;
+
+        if (worklog) {
+          if (worklog.total > worklog.maxResults) {
+            console.warn('Worklog does not contain all results.');
+          }
+
+          var timeSpent = aggregateWorkLogs(worklog.worklogs);
           var duration = moment.duration({
             seconds: timeSpent
           });
@@ -61,12 +76,12 @@ function getWorkLog(issues, epicMap, epicKey, whitespace) {
           else {
             epicMap[epicKey] = duration;
           }
+
+          // console.log(`${whitespace}${issue.key}: ${epicKey}, ${duration}`);
         }
+      }
 
-        console.log(`${whitespace}${issue.key}: ${epicKey}, ${duration}`);
-
-        return getWorkLog(issue.fields.subtasks, epicMap, epicKey, whitespace + '  ');  
-      });
+      return getWorkLog(issue.fields.subtasks, epicMap, epicKey, whitespace + '  ');
     });
   }
 }
@@ -79,13 +94,25 @@ return post('search', {
   maxResults: 1000,
   fields: [
     epicFieldName,
-    'subtasks'
+    'subtasks',
+    'worklog'
   ]
 })
-.then(storiesAndBugs => getWorkLog(storiesAndBugs.issues, epicMap, null, ''))
+.then(storiesAndBugs => {
+  if (storiesAndBugs.total > storiesAndBugs.maxResults) {
+    console.warn('Query result does not contain all results.');
+  }
+
+  return getWorkLog(storiesAndBugs.issues, epicMap, null, '');
+})
 .then(() => {
-  console.log(epicMap);
   _.forIn(epicMap, (value, key) => {
-    console.log(`${key}: ${value.asSeconds()}`);
+    var secondsLogged = value.asSeconds();
+
+    if (secondsLogged) {
+      var percent = (secondsLogged / workingSeconds) * 100;
+
+      console.log(`${key}: ${percent.toFixed(2)}%`);
+    }
   });
 });
