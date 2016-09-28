@@ -10,7 +10,7 @@ const username = 'heymagurany';
 const options = {
   auth: {
     user: username,
-    pass: '43dmPzctJZvGnLeeGTt2zhW7vs7KrV'
+    pass: ''
   },
   json: true,
   headers: {
@@ -44,27 +44,31 @@ function aggregateWorkLogs(worklogs) {
 
 function getWorkLog(issues, epicMap, epicKey, whitespace) {
   if (issues) {
-    return Promise.reduce(issues, (total, issue) => {
+    return Promise.each(issues, issue => {
       epicKey = issue.fields[epicFieldName] || epicKey;
-      epicMap[issue.key] = epicKey;
 
-      return Promise.reduce([
-        get(`issue/${issue.key}/worklog`)
-        .then(result => aggregateWorkLogs(result.worklogs)),
-        getWorkLog(issue.fields.subtasks, epicMap, epicKey, whitespace + '  ')
-      ], (total, timeSpent) => total + timeSpent, total)
+      return get(`issue/${issue.key}/worklog`)
+      .then(result => aggregateWorkLogs(result.worklogs))
       .then(timeSpent => {
-        var duration = moment.duration({
-          seconds: timeSpent
-        });
+        if (epicKey) {
+          var duration = moment.duration({
+            seconds: timeSpent
+          });
+
+          if (epicMap[epicKey]) {
+            epicMap[epicKey].add(duration);
+          }
+          else {
+            epicMap[epicKey] = duration;
+          }
+        }
 
         console.log(`${whitespace}${issue.key}: ${epicKey}, ${duration}`);
-        return timeSpent;
-      });
-    }, 0);
-  }
 
-  return 0;
+        return getWorkLog(issue.fields.subtasks, epicMap, epicKey, whitespace + '  ');  
+      });
+    });
+  }
 }
 
 var epicMap = {};
@@ -79,9 +83,9 @@ return post('search', {
   ]
 })
 .then(storiesAndBugs => getWorkLog(storiesAndBugs.issues, epicMap, null, ''))
-.then(timeSpent => {
-  var duration = moment.duration({
-    seconds: timeSpent
+.then(() => {
+  console.log(epicMap);
+  _.forIn(epicMap, (value, key) => {
+    console.log(`${key}: ${value.asSeconds()}`);
   });
-  console.log(`${duration.humanize()}`);
 });
