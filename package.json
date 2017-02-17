@@ -1,5 +1,5 @@
 {
-  "name": "jira2inin",
+  "name": "jira-worklog",
   "version": "1.0.0",
   "description": "Quarterly R&D time reporting sucks. This should help.",
   "main": "time-tracker.js",
@@ -13,5 +13,8 @@
     "lodash": "^4.13.1",
     "moment": "^2.13.0",
     "request-promise": "^3.0.0"
+  },
+  "bin": {
+    "jira-worklog": "./bin/jira-worklog"
   }
 }

@@ -1,0 +1,18 @@
+#!/usr/bin/env node
+
+process.title = 'toggl-to-jira';
+
+const moment = require('moment');
+const timeTracker = require('../time-tracker.js')
+
+const fromTime = moment(process.argv[2]);
+const toTime = moment(process.argv[3]);
+const workingSeconds = parseInt(process.argv[4]) * 28800;
+const username = process.argv[5];
+
+if (process.argv.length < 6 || !fromTime.isValid() || !toTime.isValid() || isNaN(workingSeconds)) {
+  console.log(`usage: ${process.argv[1]} <start-date> <end-date> <working-days> <username>`);
+  return;
+}
+
+timeTracker(fromTime, toTime, workingSeconds, username);
