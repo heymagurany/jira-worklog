@@ -1,23 +1,24 @@
 const _ = require('lodash');
 const moment = require('moment');
 const Promise = require('bluebird');
+const readline = require('readline');
 const request = require('request-promise');
+const Writable = require('stream').Writable;
 
 const fromTime = moment(process.argv[2]);
 const toTime = moment(process.argv[3]);
 const workingSeconds = parseInt(process.argv[4]) * 28800;
+const username = process.argv[5];
 
-if (process.argv.length < 5 || !fromTime.isValid() || !toTime.isValid() || isNaN(workingSeconds)) {
-  console.log("usage: jira2inin <start-date> <end-date> <working-days>");
+if (process.argv.length < 6 || !fromTime.isValid() || !toTime.isValid() || isNaN(workingSeconds)) {
+  console.log("usage: jira2inin <start-date> <end-date> <working-days> <username>");
   return;
 }
 
 const baseUrl = 'https://inindca.atlassian.net/rest/api/2/';
-const username = 'heymagurany';
 const options = {
   auth: {
-    user: username,
-    pass: ''
+    user: username
   },
   json: true,
   headers: {
@@ -27,19 +28,53 @@ const options = {
 const epicIssueTypeId = '6';
 const epicFieldName = 'customfield_10300';
 
+function auth() {
+  return new Promise((resolve, reject) => {
+    if (options.auth.pass) {
+      resolve(options);
+    }
+
+    var mute = false;
+    var mutedStdout = new Writable({
+      write: function(chunk, encoding, callback) {
+        if (!mute) {
+          process.stdout.write(chunk, encoding);
+        }
+        callback();
+      }
+    });
+
+    var interface = readline.createInterface({
+      input: process.stdin,
+      output: mutedStdout,
+      terminal: true
+    });
+
+    interface.question('password: ', (password) => {
+      mute = false;
+      options.auth.pass = password;
+      interface.write('\n');
+      interface.close();
+      resolve(options);
+    });
+
+    mute = true;
+  });
+}
+
 function get(path) {
-  return request(_.assign(options, {
+  return auth().then((options) => request(_.assign(options, {
     method: 'GET',
     url: baseUrl + path
-  }));
+  })));
 }
 
 function post(path, body) {
-  return request(_.assign(options, {
+  return auth().then((options) => request(_.assign(options, {
     method: 'POST',
     url: baseUrl + path,
     body: body
-  }));
+  })));
 }
 
 function aggregateWorkLogs(worklogs, totalTime) {
@@ -93,7 +128,6 @@ return post('search', {
   ]
 })
 .then(storiesAndBugs => {
-  console.log(storiesAndBugs.issues[0]);
   if (storiesAndBugs.total > storiesAndBugs.maxResults) {
     console.warn('Query result does not contain all results.');
   }
